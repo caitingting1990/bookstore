@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('图书列表')" />
+</head>
+<body class="gray-bg">
+<div class="container-div">
+    <div class="row">
+        <div class="col-sm-12 search-collapse">
+                    <ul id="hotbooks">
+
+                    </ul>
+
+        </div>
+
+    </div>
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: bootstrap-table-editable-js" />
+<script th:inline="javascript">
+    var editFlag = [[${@permission.hasPermi('system:book:edit')}]];
+    var removeFlag = [[${@permission.hasPermi('system:book:remove')}]];
+    var prefix = ctx + "system/book";
+    var  hotbooks=[[${hotbooks}]]//所以我们获取到了热度大于60的对象 下面就是逐条渲染
+    $(function() {
+        hotbooks.forEach((value, index, array) => {//遍历当前获取的所有最热门书籍并逐条添加大ul下
+            var name=value.name//图书名
+            var price=value.price//图书价格
+            var url=value.imgUrl//图书地址
+            var id=value.id//获取图书唯一标识，以便于添加图书到购物车
+            $('#hotbooks').append('<li>\n' +
+                '                            <label>图书名：</label>\n' +
+                '                            <input type="text" value="'+name
+                +'" />\n' +
+                '                            <label>图书价格：</label>\n' +
+                '                            <input type="text" value="'+price
+                +'" />\n' +
+                '                            <img src="'+url+'" style="max-height:10vh;">\n' +
+                '                        <a onclick="addToCart('+id+')">加入购入车</a></li>')//将元素一条条添加到当前节点下
+        })
+    });
+    //写添加书籍到购物车的逻辑
+    function addToCart(bookId){
+        //就是执行一条插入语句
+        //因此我们根据书籍信息，添加数量为1的对象到购物车中
+        var addTime=new Date()
+        var price,state=0,num=1
+        hotbooks.forEach((value, index, array) => {
+            if(value.id==bookId){
+                price=value.price
+            }
+        })
+        var data={bookId:bookId,addTime:addTime,price:price,state:state,num:num}
+        //拿到我们要插入到购物车中的数据信息后，调用插入购物车的数据库接口,添加成功
+        $.operate.post(ctx+ 'system/cart/add',data)
+    }
+
+
+
+</script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('订单列表')" />
+</head>
+<body class="gray-bg">
+     <div class="container-div">
+        <div class="row">
+            <div class="col-sm-12 search-collapse">
+                <form id="formId">
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>下单数目(,间隔)：</label>
+                                <input type="text" name="bookIds"/>
+                            </li>
+                            <li>
+                                <label>下单价格(,间隔)：</label>
+                                <input type="text" name="bookPrices"/>
+                            </li>
+                            <li>
+                                <label>下单人：</label>
+                                <input type="text" name="userId"/>
+                            </li>
+                            <li>
+                                <label>总价：</label>
+                                <input type="text" name="totalPrice"/>
+                            </li>
+                            <li>
+                                <label>订单状态(0正在结算，1结算成功待发货，2发货中，3发货成功)：</label>
+                                <input type="text" name="orderState"/>
+                            </li>
+                            <li>
+                                <label>开始结算时间：</label>
+                                <input type="text" class="time-input" placeholder="请选择开始结算时间" name="startTime"/>
+                            </li>
+                            <li>
+                                <label>订单确认时间：</label>
+                                <input type="text" class="time-input" placeholder="请选择订单确认时间" name="dealTime"/>
+                            </li>
+                            <li>
+                                <label>订单完成时间：</label>
+                                <input type="text" class="time-input" placeholder="请选择订单完成时间" name="endTime"/>
+                            </li>
+                            <li>
+                                <label>服务订单人员：</label>
+                                <input type="text" name="servicer"/>
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i class="fa fa-search"></i>&nbsp;搜索</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+
+            <div class="btn-group-sm" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="$.operate.add()" shiro:hasPermission="system:orders:add">
+                    <i class="fa fa-plus"></i> 添加
+                </a>
+                <a class="btn btn-primary single disabled" onclick="$.operate.edit()" shiro:hasPermission="system:orders:edit">
+                    <i class="fa fa-edit"></i> 修改
+                </a>
+                <a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()" shiro:hasPermission="system:orders:remove">
+                    <i class="fa fa-remove"></i> 删除
+                </a>
+                <a class="btn btn-warning" onclick="checkOrders()" >
+                    <i class="fa fa-download"></i> 更新超时订单状态
+                </a>
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+     <th:block th:include="include :: bootstrap-table-editable-js" />
+    <script th:inline="javascript">
+        var editFlag = [[${@permission.hasPermi('system:orders:edit')}]];
+        var removeFlag = [[${@permission.hasPermi('system:orders:remove')}]];
+        var user=[[${user}]]//获取从后端封装传入的用户信息
+        var prefix = ctx + "system/orders";
+
+        $(function() {
+
+
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                exportUrl: prefix + "/export",
+                onEditableSave: onEditableSave,//作用是每次编辑后执行该函数
+                modalName: "订单",
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: 'id',
+                    title: '序号',
+                },
+                {
+                    field: 'bookIds',
+                    title: '下单书目'//我们知道该原则是多个书籍id拼接
+                },
+                {
+                    field: 'bookPrices',
+                    title: '下单价格'
+                },
+                {
+                    field: 'userId',
+                    title: '下单人'
+                },
+                {
+                    field: 'totalPrice',
+                    title: '总价',
+                    editable : {
+                        type : 'text',//编辑框的类型。支持text|textarea|select|date|checklist等
+                        title : '订单价格',
+                        emptytext : "0.0",
+                        validate : function(value) {
+                            if(Number(value).toString()=='NaN'){//输入为字符串
+                                return '价格必须为数字';
+                            }
+                        }
+                    },
+                    formatter:function (value, row, index) {//用于格式化显示内容的
+                        //输入为数字,设定格式化为小数点后2位
+                        return Number(value).toFixed(2);
+                    }//后台管理或商家人员可以修改总价是合理的，但要验证是数字
+                },
+                {
+                    field: 'orderState',
+                    title: '订单状态',//因为订单状态统一了
+                    editable:{
+                        type: "select",              //编辑框的类型。支持text|textarea|select|date|checklist等
+                        source: [{ value: 0, text: "订单结算中" }, { value: 1, text: "结算完成待发货" }, {value:2,text:"发货中"},{value:3,text:"收货确认"}],
+                        title: "选择订单状态",           //编辑框的标题
+                        disabled: false,           //是否禁用编辑
+                        emptytext: "未定义",       //空值的默认文本
+                        mode: "popup",            //编辑框的模式：支持popup和inline两种模式，默认是popup
+                        validate: function (value) { //字段验证
+                            if (!$.trim(value)) {
+                                return '不能为空';
+                            }
+                        }
+                    }
+                },
+                {
+                    field: 'startTime',
+                    title: '开始结算时间'
+                },
+                {
+                    field: 'dealTime',
+                    title: '订单确认时间'//由订单发起人结算确认才自动生成
+                },
+                {
+                    field: 'endTime',
+                    title: '订单完成时间'//由订单发起人结算确认才自动生成
+                },
+                {
+                    field: 'servicer',
+                    title: '服务订单人员',//对应的是订单服务人员的编号
+                    editable :{
+                        type: "select",              //直接选用选择框的方式，可以避免格式转换，即存入数据库的是value 显示的是text
+                        source: [{ value:user.userId, text: user.userName }],
+                        title: "选择订单状态",           //编辑框的标题
+                        disabled: false,           //是否禁用编辑
+                        emptytext: user.userName,       //空值的默认文本
+                        mode: "popup",            //编辑框的模式：支持popup和inline两种模式，默认是popup
+                        validate: function (value) { //字段验证
+                            if (!$.trim(value)) {
+                                return '不能为空';
+                            }
+                        }
+                    }
+                },
+                {
+                    field: 'remark',
+                    title: '备注'
+                },
+                {
+                    title: '操作',
+                    align: 'center',
+                    formatter: function(value, row, index) {
+                        var actions = [];
+                        //更新购物车状态
+                        changeCartSateByOrder(row.id)
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.id + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.id + '\')"><i class="fa fa-remove"></i>删除</a>');
+                        return actions.join('');
+                    }
+                }]
+            };
+            $.table.init(options);
+
+        });
+
+
+
+        function onEditableSave (field, row, rowIndex, oldValue, $el) {
+            //利用该函数 实现数据调用储存信息的接口 并刷新表格
+            //所以拿到回传的数据
+            var data={}
+            data[field]=row[field];
+            data['id']=row['id'];
+            //调用储存更新接口
+            var url = ctx+ 'system/orders/edit';
+            $.operate.post(url,data)//该方法可以调用接口类型为post的controller,callback为回调函数，不写了有默认的
+        }
+
+
+
+
+
+        //比较订单状态是否超过半小时还处于0
+        function checkOrders(){
+            //函数要检查所有当前订单
+            //首先是获取到所有的订单信息
+            $.post(prefix + "/list",{},function(res){
+                //遍历查到的所有的订单
+                res.rows.forEach((value, index, array) => {
+                    var state=value.orderState//订单状态
+                    var startTime=new Date(value.startTime).getTime()//开始产生订单的时 并获取时间戳
+                    var nowTime=new Date().getTime()
+                    var periodTime = (nowTime-startTime)/1000      //获得该时间与当前时间的秒数
+                    console.log("分钟数",periodTime/60)
+                    if(periodTime>60*30){//间隔时间超过30min，执行删除 当前订单的操作
+                        $.post(prefix + "/remove",{ids:value.id},function(res){
+                            $.modal.msgError('订单超时30min，已自动删除，如重新下单请到购物车中重新下单！')//弹出一个自动关闭的提示
+                            $.table.refresh()
+                            //同时还要对购物车中相关订单内容状态进行恢复
+                            //即订单中value.bookIds里面的所有购物车内容都要更新其state为0
+                            value.bookIds.split(",").forEach((val,i,arr)=>{
+                                //bookId=val,假设添加到订单的是购物车的记录的id
+                                var data={state:0,id:val}
+                                $.post(ctx+'system/cart/edit',data)//更新相应的购物车
+                            })     //根据，拆分为数组
+                        })
+                    }
+                })
+            })
+        }
+
+        //根据订单状态调整购物车中相关的记录状态
+        function changeCartSateByOrder(orderId){
+            //订单进入后，原购物车中的书籍状态变成了1
+            $.post(prefix+"/selectById",{id:orderId},function(res){
+                //查询结果res=order，即获得了自己想要的这个order
+                //判断该order的状态
+                switch (res.orderState) {
+                    case 0:
+                        //订单状态为0，原购物车中书籍状态更新为1
+                        res.bookIds.split(",").forEach((val,i,arr)=>{
+                            //bookId=val,假设添加到订单的是购物车的记录的id
+                            var data={state:1,id:val}
+                            $.post(ctx+'system/cart/edit',data)//更新相应的购物车
+                        })     //根据，拆分为数组
+                        break;
+                    case 1:
+                        //订1车2
+                        res.bookIds.split(",").forEach((val,i,arr)=>{
+                            //bookId=val,假设添加到订单的是购物车的记录的id
+                            var data={state:2,id:val}
+                            $.post(ctx+'system/cart/edit',data)//更新相应的购物车
+                        })     //根据，拆分为数组
+                        break;
+                    case 3:
+                        //订2车-
+                        $.post(ctx+'system/cart/remove',{ids:res.bookIds})
+                        break;
+                    default:
+                        break;
+                }
+            })
+
+        }
+    </script>
+</body>
+</html>

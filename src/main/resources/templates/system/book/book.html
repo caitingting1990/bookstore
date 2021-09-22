@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('图书列表')" />
+</head>
+<body class="gray-bg">
+     <div class="container-div">
+        <div class="row">
+            <div class="col-sm-12 search-collapse">
+                <form id="formId">
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>图书名：</label>
+                                <input type="text" name="name"/>
+                            </li>
+                            <li>
+                                <label>图书价格：</label>
+                                <input type="text" name="price"/>
+                            </li>
+                            <li>
+                                <label>图书简介：</label>
+                                <input type="text" name="detail"/>
+                            </li>
+                            <li>
+                                <label>图书分类：</label>
+                                <input type="text" name="classification"/>
+                            </li>
+                            <li>
+                                <label>图书热度：</label>
+                                <input type="text" name="hot"/>
+                            </li>
+                            <li>
+                                <label>图书作者：</label>
+                                <input type="text" name="author"/>
+                            </li>
+                            <li>
+                                <label>图片地址：</label>
+                                <input type="text" name="imgUrl"/>
+                            </li>
+                            <li>
+                                <label>出版社：</label>
+                                <input type="text" name="press"/>
+                            </li>
+                            <li>
+                                <label>页数：</label>
+                                <input type="text" name="totalPage"/>
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i class="fa fa-search"></i>&nbsp;搜索</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+
+            <div class="btn-group-sm" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="$.operate.add()" shiro:hasPermission="system:book:add">
+                    <i class="fa fa-plus"></i> 添加
+                </a>
+                <a class="btn btn-primary single disabled" onclick="$.operate.edit()" shiro:hasPermission="system:book:edit">
+                    <i class="fa fa-edit"></i> 修改
+                </a>
+                <a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()" shiro:hasPermission="system:book:remove">
+                    <i class="fa fa-remove"></i> 删除
+                </a>
+                <a class="btn btn-warning" onclick="$.table.exportExcel()" shiro:hasPermission="system:book:export">
+                    <i class="fa fa-download"></i> 导出
+                </a>
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: bootstrap-table-editable-js" />
+    <script th:inline="javascript">
+        var editFlag = [[${@permission.hasPermi('system:book:edit')}]];
+        var removeFlag = [[${@permission.hasPermi('system:book:remove')}]];
+        var prefix = ctx + "system/book";
+
+        $(function() {
+
+
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                exportUrl: prefix + "/export",
+                onEditableSave: onEditableSave,//设置为可以编辑
+                modalName: "图书",
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: 'id',
+                    title: '序号'
+                },
+                {
+                    field: 'name',
+                    title: '图书名',
+                    editable: true
+                },
+                {
+                    field: 'price',
+                    title: '图书价格',
+                    editable : {
+                        type : 'text',//编辑框的类型。支持text|textarea|select|date|checklist等
+                        title : '价格',
+                        emptytext : "0.0",
+                        validate : function(value) {
+                            if(Number(value).toString()=='NaN'){//输入为字符串
+                                return '价格必须为数字';
+                            }
+                        }
+                    },
+                    formatter:function (value, row, index) {//用于格式化显示内容的
+                            //输入为数字,设定格式化为小数点后2位
+                            return Number(value).toFixed(2);
+                    }
+                },
+                {
+                    field: 'detail',
+                    title: '图书简介',
+                    editable: true
+                },
+                {
+                    field: 'classification',
+                    title: '图书分类',//可以根据自己的分类习惯执行
+                    editable:{
+                        type: "select",              //编辑框的类型。支持text|textarea|select|date|checklist等
+                        source: [{ value: 1, text: "画册" }, { value: 2, text: "小说" }, {value:3,text:"高考"}],
+                        title: "选择图书类别",           //编辑框的标题
+                        disabled: false,           //是否禁用编辑
+                        emptytext: "未定义",       //空值的默认文本
+                        mode: "popup",            //编辑框的模式：支持popup和inline两种模式，默认是popup
+                        validate: function (value) { //字段验证
+                            if (!$.trim(value)) {
+                                return '不能为空';
+                            }
+                        }
+                    }
+                },
+                {
+                    field: 'hot',
+                    title: '图书热度',
+                    editable : {
+                        type : 'text',//编辑框的类型。支持text|textarea|select|date|checklist等
+                        title : '图书热度',
+                        emptytext : "0",
+                        validate : function(value) {
+                            if(Number(value).toString()=='NaN'){//输入为字符串
+                                return '热度必须为数字';
+                            }
+                            if(Number(value)>100||Number(value)<0){//热度定义为0-100之间的整数
+                                return '热度必须为0-100区间';
+                            }
+                        }
+                    },
+                },
+                {
+                    field: 'author',
+                    title: '图书作者',
+                    editable: true
+                },
+                {
+                    field: 'imgUrl',
+                    title: '图片地址',
+                    // formatter:(value, row, index) => {
+                    //     // value 就代表刚才设定的地址
+                    //     return '<img src="'+value+'" style="max-height:10vh;">';
+                    //
+                    // }
+                    editable: true
+                },
+                {
+                    field: 'press',
+                    title: '出版社',
+                    editable: true
+                },
+                {
+                    field: 'totalPage',
+                    title: '页数',
+                    editable: true
+                },
+                {
+                    field: 'remark',
+                    title: '备注',
+                    editable: true
+                },
+                {
+                    title: '操作',
+                    align: 'center',
+                    formatter: function(value, row, index) {
+                        var actions = [];
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.id + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.id + '\')"><i class="fa fa-remove"></i>删除</a>');
+                        return actions.join('');
+                    }
+                }]
+            };
+            $.table.init(options);
+        });
+
+
+        function onEditableSave (field, row, rowIndex, oldValue, $el) {
+
+
+            //利用该函数 实现数据调用储存信息的接口 并刷新表格
+            //所以拿到回传的数据
+            var data={}
+            data[field]=row[field];
+            data['id']=row['id'];
+            console.log(data)//通过这个方法 我们可以拿到当前修改的字段名和查询条件id {name: "1998962", id: 2}
+            //调用储存更新接口
+            var url = ctx+ 'system/book/edit';
+            $.operate.post(url,data)//该方法可以调用接口类型为post的controller,callback为回调函数，不写了有默认的
+
+            //调用这个方法后 可以自动更新相关的修改内容到数据库相关表格中
+            //刷新后 相关内容即更新
+        }
+    </script>
+</body>
+</html>

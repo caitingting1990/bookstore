@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.project.system.orders.mapper.OrdersMapper">
+    
+    <resultMap type="Orders" id="OrdersResult">
+        <result property="id"    column="id"    />
+        <result property="bookIds"    column="book_ids"    />
+        <result property="bookPrices"    column="book_prices"    />
+        <result property="userId"    column="user_id"    />
+        <result property="totalPrice"    column="total_price"    />
+        <result property="orderState"    column="order_state"    />
+        <result property="startTime"    column="start_time"    />
+        <result property="dealTime"    column="deal_time"    />
+        <result property="endTime"    column="end_time"    />
+        <result property="servicer"    column="servicer"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectOrdersVo">
+        select id, book_ids, book_prices, user_id, total_price, order_state, start_time, deal_time, end_time, servicer, remark from orders
+    </sql>
+
+    <select id="selectOrdersList" parameterType="Orders" resultMap="OrdersResult">
+        <include refid="selectOrdersVo"/>
+        <where>  
+            <if test="bookIds != null  and bookIds != ''"> and book_ids = #{bookIds}</if>
+            <if test="bookPrices != null  and bookPrices != ''"> and book_prices = #{bookPrices}</if>
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="totalPrice != null "> and total_price = #{totalPrice}</if>
+            <if test="orderState != null "> and order_state = #{orderState}</if>
+            <if test="startTime != null "> and start_time = #{startTime}</if>
+            <if test="dealTime != null "> and deal_time = #{dealTime}</if>
+            <if test="endTime != null "> and end_time = #{endTime}</if>
+            <if test="servicer != null "> and servicer = #{servicer}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrdersById" parameterType="Long" resultMap="OrdersResult">
+        <include refid="selectOrdersVo"/>
+        where id = #{id}
+    </select>
+        
+    <insert id="insertOrders" parameterType="Orders" useGeneratedKeys="true" keyProperty="id">
+        insert into orders
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bookIds != null">book_ids,</if>
+            <if test="bookPrices != null">book_prices,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="totalPrice != null">total_price,</if>
+            <if test="orderState != null">order_state,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="dealTime != null">deal_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="servicer != null">servicer,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bookIds != null">#{bookIds},</if>
+            <if test="bookPrices != null">#{bookPrices},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="totalPrice != null">#{totalPrice},</if>
+            <if test="orderState != null">#{orderState},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="dealTime != null">#{dealTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="servicer != null">#{servicer},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrders" parameterType="Orders">
+        update orders
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="bookIds != null">book_ids = #{bookIds},</if>
+            <if test="bookPrices != null">book_prices = #{bookPrices},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="totalPrice != null">total_price = #{totalPrice},</if>
+            <if test="orderState != null">order_state = #{orderState},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="dealTime != null">deal_time = #{dealTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="servicer != null">servicer = #{servicer},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrdersById" parameterType="Long">
+        delete from orders where id = #{id}
+    </delete>
+
+    <delete id="deleteOrdersByIds" parameterType="String">
+        delete from orders where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>
